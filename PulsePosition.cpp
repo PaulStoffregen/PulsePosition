@@ -248,6 +248,9 @@ void ftm0_isr(void)
 	PulsePositionInput::overflow_inc = false;
 }
 
+// some explanation regarding this C to C++ trickery can be found here:
+// http://forum.pjrc.com/threads/25278-Low-Power-with-Event-based-software-architecture-brainstorm?p=43496&viewfull=1#post43496
+
 uint16_t PulsePositionInput::overflow_count = 0;
 bool PulsePositionInput::overflow_inc = false;
 uint8_t PulsePositionInput::channelmask = 0;
