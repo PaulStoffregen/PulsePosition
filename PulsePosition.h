@@ -46,12 +46,14 @@ public:
 private:
 	void isr(void);
 	uint32_t pulse_width[PULSEPOSITION_MAXCHANNELS+1];
+	uint32_t pulse_buffer[PULSEPOSITION_MAXCHANNELS+1];
 	uint32_t pulse_remaining;
 	volatile uint8_t *framePinReg;
 	struct ftm_channel_struct *ftm;
 	uint8_t state;
 	uint8_t current_channel;
 	uint8_t total_channels;
+	uint8_t total_channels_buffer;
 	static PulsePositionOutput *list[8];
 	static uint8_t channelmask;
 };

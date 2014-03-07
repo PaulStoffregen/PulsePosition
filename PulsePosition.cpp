@@ -164,7 +164,6 @@ bool PulsePositionOutput::write(uint8_t channel, float microseconds)
 			space = TX_MINIMUM_SPACE_CLOCKS;
 		}
 	}
-	// TODO: should probably implement double buffering?
 	__disable_irq();
 	pulse_width[0] = space;
 	pulse_width[channel] = clocks;
@@ -186,8 +185,14 @@ void PulsePositionOutput::isr(void)
 		uint32_t width, channel;
 		if (state == 1) {
 			channel = current_channel;
-		 	width = pulse_width[channel] - TX_PULSE_WIDTH_CLOCKS;
-			if (++channel > total_channels) {
+			if (channel == 0) {
+				total_channels_buffer = total_channels;
+				for (uint32_t i=0; i <= total_channels_buffer; i++) {
+					pulse_buffer[i] = pulse_width[i];
+				}
+			}
+			width = pulse_buffer[channel] - TX_PULSE_WIDTH_CLOCKS;
+			if (++channel > total_channels_buffer) {
 				channel = 0;
 			}
 			if (framePinReg) {
