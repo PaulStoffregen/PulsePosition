@@ -91,6 +91,23 @@ PulsePositionOutput::PulsePositionOutput(void)
 	for (int i=1; i <= PULSEPOSITION_MAXCHANNELS; i++) {
 		pulse_width[i] = TX_DEFAULT_SIGNAL_CLOCKS;
 	}
+	cscSet = 0b01011100;
+	cscClear = 0b01011000;
+}
+
+PulsePositionOutput::PulsePositionOutput(int polarity)
+{
+	pulse_width[0] = TX_MINIMUM_FRAME_CLOCKS;
+	for (int i=1; i <= PULSEPOSITION_MAXCHANNELS; i++) {
+		pulse_width[i] = TX_DEFAULT_SIGNAL_CLOCKS;
+	}
+	if (polarity == FALLING) {
+		cscSet = 0b01011000;
+		cscClear = 0b01011100;
+	} else {
+		cscSet = 0b01011100;
+		cscClear = 0b01011000;
+	}
 }
 
 bool PulsePositionOutput::begin(uint8_t txPin)
@@ -134,7 +151,7 @@ bool PulsePositionOutput::begin(uint8_t txPin, uint8_t framePin)
 	total_channels = 0;
 	ftm = (struct ftm_channel_struct *)reg;
 	ftm->cv = 200;
-	ftm->csc = 0b01011100; // set on compare match & interrupt
+	ftm->csc = cscSet; // set on compare match & interrupt
 	list[channel] = this;
 	channelmask |= (1<<channel);
 	*portConfigRegister(txPin) = PORT_PCR_MUX(4) | PORT_PCR_DSE | PORT_PCR_SRE;
@@ -178,7 +195,7 @@ void PulsePositionOutput::isr(void)
 	if (state == 0) {
 		// pin was just set high, schedule it to go low
 		ftm->cv += TX_PULSE_WIDTH_CLOCKS;
-		ftm->csc = 0b01011000; // clear on compare match & interrupt
+		ftm->csc = cscClear; // clear on compare match & interrupt
 		state = 1;
 	} else {
 		// pin just went low
@@ -209,11 +226,11 @@ void PulsePositionOutput::isr(void)
 		}
 		if (width <= 60000) {
 			ftm->cv += width;
-			ftm->csc = 0b01011100; // set on compare match & interrupt
+			ftm->csc = cscSet; // set on compare match & interrupt
 			state = 0;
 		} else {
 			ftm->cv += 58000;
-			ftm->csc = 0b01011000; // clear on compare match & interrupt
+			ftm->csc = cscClear; // clear on compare match & interrupt
 			pulse_remaining = width - 58000;
 			state = 2;
 		}

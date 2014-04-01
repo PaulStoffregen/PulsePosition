@@ -39,6 +39,7 @@ class PulsePositionOutput
 {
 public:
 	PulsePositionOutput(void);
+	PulsePositionOutput(int polarity);
 	bool begin(uint8_t txPin); // txPin can be 5,6,9,10,20,21,22,23
 	bool begin(uint8_t txPin, uint8_t framePin);
 	bool write(uint8_t channel, float microseconds);
@@ -54,6 +55,8 @@ private:
 	uint8_t current_channel;
 	uint8_t total_channels;
 	uint8_t total_channels_buffer;
+	uint8_t cscSet;
+	uint8_t cscClear;
 	static PulsePositionOutput *list[8];
 	static uint8_t channelmask;
 };
