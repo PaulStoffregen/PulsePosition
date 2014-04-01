@@ -66,6 +66,7 @@ class PulsePositionInput
 {
 public:
 	PulsePositionInput(void);
+	PulsePositionInput(int polarity);
 	bool begin(uint8_t rxPin); // rxPin can be 5,6,9,10,20,21,22,23
 	int available(void);
 	float read(uint8_t channel);
@@ -78,6 +79,7 @@ private:
 	uint32_t prev;
 	uint8_t write_index;
 	uint8_t total_channels;
+	uint8_t cscEdge;
 	bool available_flag;
 	static bool overflow_inc;
 	static uint16_t overflow_count;

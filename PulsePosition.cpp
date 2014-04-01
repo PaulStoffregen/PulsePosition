@@ -275,6 +275,12 @@ PulsePositionInput * PulsePositionInput::list[8];
 
 PulsePositionInput::PulsePositionInput(void)
 {
+	cscEdge = 0b01000100;
+}
+
+PulsePositionInput::PulsePositionInput(int polarity)
+{
+	cscEdge = (polarity == FALLING) ? 0b01001000 : 0b01000100;
 }
 
 bool PulsePositionInput::begin(uint8_t pin)
@@ -305,7 +311,7 @@ bool PulsePositionInput::begin(uint8_t pin)
 	write_index = 255;
 	available_flag = false;
 	ftm = (struct ftm_channel_struct *)reg;
-	ftm->csc = 0b01000100; // input capture & interrupt on rising edge
+	ftm->csc = cscEdge; // input capture & interrupt on rising edge
 	list[channel] = this;
 	channelmask |= (1<<channel);
 	*portConfigRegister(pin) = PORT_PCR_MUX(4) | PORT_PCR_DSE | PORT_PCR_SRE;
@@ -319,7 +325,7 @@ void PulsePositionInput::isr(void)
 	uint32_t val, count;
 
 	val = ftm->cv;
-	ftm->csc = 0b01000100; // input capture & interrupt on rising edge
+	ftm->csc = cscEdge; // input capture & interrupt on rising edge
 	count = overflow_count;
 	if (val > 0xE000 && overflow_inc) count--;
 	val |= (count << 16);
