@@ -42,7 +42,7 @@
 #define TX_MAXIMUM_SIGNAL  2500.0
 
 // The default signal to send if nothing has been written.
-#define TX_DEFAULT_SIGNAL  1000.0
+#define TX_DEFAULT_SIGNAL  1500.0
 
 // When transmitting with a single pin, the minimum space signal that marks
 // the end of a frame.  Single wire receivers recognize the end of a frame
