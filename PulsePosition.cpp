@@ -70,8 +70,6 @@
 #define RX_MINIMUM_SPACE   3500.0
 
 
-
-
 // convert from microseconds to I/O clock ticks
 #define CLOCKS_PER_MICROSECOND ((double)F_BUS / 1000000.0)
 #define TX_MINIMUM_SIGNAL_CLOCKS  (uint32_t)(TX_MINIMUM_SIGNAL * CLOCKS_PER_MICROSECOND)
@@ -81,6 +79,9 @@
 #define TX_MINIMUM_FRAME_CLOCKS   (uint32_t)(TX_MINIMUM_FRAME * CLOCKS_PER_MICROSECOND)
 #define TX_PULSE_WIDTH_CLOCKS     (uint32_t)(TX_PULSE_WIDTH * CLOCKS_PER_MICROSECOND)
 #define RX_MINIMUM_SPACE_CLOCKS   (uint32_t)(RX_MINIMUM_SPACE * CLOCKS_PER_MICROSECOND)
+
+
+#define FTM0_SC_VALUE (FTM_SC_TOIE | FTM_SC_CLKS(1) | FTM_SC_PS(0))
 
 uint8_t PulsePositionOutput::channelmask = 0;
 PulsePositionOutput * PulsePositionOutput::list[8];
@@ -120,11 +121,11 @@ bool PulsePositionOutput::begin(uint8_t txPin, uint8_t framePin)
 	uint32_t channel;
 	volatile void *reg;
 
-	if (FTM0_MOD != 0xFFFF || FTM0_SC != (FTM_SC_CLKS(1) | FTM_SC_PS(0))) {
+	if (FTM0_MOD != 0xFFFF || (FTM0_SC & 0x7F) != FTM0_SC_VALUE) {
 		FTM0_SC = 0;
 		FTM0_CNT = 0;
 		FTM0_MOD = 0xFFFF;
-		FTM0_SC = FTM_SC_CLKS(1) | FTM_SC_PS(0);
+		FTM0_SC = FTM0_SC_VALUE;
 		FTM0_MODE = 0;
 	}
 	switch (txPin) {
@@ -240,7 +241,7 @@ void PulsePositionOutput::isr(void)
 void ftm0_isr(void)
 {
 	if (FTM0_SC & 0x80) {
-		FTM0_SC = FTM_SC_CLKS(1) | FTM_SC_PS(0);
+		FTM0_SC = FTM0_SC_VALUE;
 		PulsePositionInput::overflow_count++;
 		PulsePositionInput::overflow_inc = true;
 	}
@@ -283,16 +284,17 @@ PulsePositionInput::PulsePositionInput(int polarity)
 	cscEdge = (polarity == FALLING) ? 0b01001000 : 0b01000100;
 }
 
+
 bool PulsePositionInput::begin(uint8_t pin)
 {
 	uint32_t channel;
 	volatile void *reg;
 
-	if (FTM0_MOD != 0xFFFF || FTM0_SC != (FTM_SC_CLKS(1) | FTM_SC_PS(0))) {
+	if (FTM0_MOD != 0xFFFF || (FTM0_SC & 0x7F) != FTM0_SC_VALUE) {
 		FTM0_SC = 0;
 		FTM0_CNT = 0;
 		FTM0_MOD = 0xFFFF;
-		FTM0_SC = FTM_SC_CLKS(1) | FTM_SC_PS(0);
+		FTM0_SC = FTM0_SC_VALUE;
 		FTM0_MODE = 0;
 	}
 	switch (pin) {
