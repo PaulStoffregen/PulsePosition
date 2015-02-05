@@ -71,7 +71,11 @@
 
 
 // convert from microseconds to I/O clock ticks
+#if defined(KINETISK)
 #define CLOCKS_PER_MICROSECOND ((double)F_BUS / 1000000.0)
+#elif defined(KINETISL)
+#define CLOCKS_PER_MICROSECOND ((double)F_PLL / 2000000.0)
+#endif
 #define TX_MINIMUM_SIGNAL_CLOCKS  (uint32_t)(TX_MINIMUM_SIGNAL * CLOCKS_PER_MICROSECOND)
 #define TX_MAXIMUM_SIGNAL_CLOCKS  (uint32_t)(TX_MAXIMUM_SIGNAL * CLOCKS_PER_MICROSECOND)
 #define TX_DEFAULT_SIGNAL_CLOCKS  (uint32_t)(TX_DEFAULT_SIGNAL * CLOCKS_PER_MICROSECOND)
@@ -82,6 +86,20 @@
 
 
 #define FTM0_SC_VALUE (FTM_SC_TOIE | FTM_SC_CLKS(1) | FTM_SC_PS(0))
+
+#if defined(KINETISK)
+#define CSC_CHANGE(reg, val)         ((reg)->csc = (val))
+#define CSC_INTACK(reg, val)         ((reg)->csc = (val))
+#define CSC_CHANGE_INTACK(reg, val)  ((reg)->csc = (val))
+#define FRAME_PIN_SET()              *framePinReg = 1
+#define FRAME_PIN_CLEAR()            *framePinReg = 0
+#elif defined(KINETISL)
+#define CSC_CHANGE(reg, val)         ({(reg)->csc = 0; while ((reg)->csc); (reg)->csc = (val);})
+#define CSC_INTACK(reg, val)         ((reg)->csc = (val) | FTM_CSC_CHF)
+#define CSC_CHANGE_INTACK(reg, val)  ({(reg)->csc = 0; while ((reg)->csc); (reg)->csc = (val) | FTM_CSC_CHF;})
+#define FRAME_PIN_SET()              *(framePinReg + 4) = framePinMask
+#define FRAME_PIN_CLEAR()            *(framePinReg + 8) = framePinMask
+#endif
 
 uint8_t PulsePositionOutput::channelmask = 0;
 PulsePositionOutput * PulsePositionOutput::list[8];
@@ -126,24 +144,29 @@ bool PulsePositionOutput::begin(uint8_t txPin, uint8_t framePin)
 		FTM0_CNT = 0;
 		FTM0_MOD = 0xFFFF;
 		FTM0_SC = FTM0_SC_VALUE;
+		#if defined(KINETISK)
 		FTM0_MODE = 0;
+		#endif
 	}
 	switch (txPin) {
-	  case  5: channel = 7; reg = &FTM0_C7SC; break;
 	  case  6: channel = 4; reg = &FTM0_C4SC; break;
 	  case  9: channel = 2; reg = &FTM0_C2SC; break;
 	  case 10: channel = 3; reg = &FTM0_C3SC; break;
 	  case 20: channel = 5; reg = &FTM0_C5SC; break;
-	  case 21: channel = 6; reg = &FTM0_C6SC; break;
 	  case 22: channel = 0; reg = &FTM0_C0SC; break;
 	  case 23: channel = 1; reg = &FTM0_C1SC; break;
+	  #if defined(KINETISK)
+	  case  5: channel = 7; reg = &FTM0_C7SC; break;
+	  case 21: channel = 6; reg = &FTM0_C6SC; break;
+	  #endif
 	  default:
 		return false;
 	}
 	if (framePin < NUM_DIGITAL_PINS) {
 		framePinReg = portOutputRegister(framePin);
+		framePinMask = digitalPinToBitMask(framePin);
 		pinMode(framePin, OUTPUT);
-		*framePinReg = 1;
+		FRAME_PIN_SET();
 	} else {
 		framePinReg = NULL;
 	}
@@ -152,7 +175,7 @@ bool PulsePositionOutput::begin(uint8_t txPin, uint8_t framePin)
 	total_channels = 0;
 	ftm = (struct ftm_channel_struct *)reg;
 	ftm->cv = 200;
-	ftm->csc = cscSet; // set on compare match & interrupt
+	CSC_CHANGE(ftm, cscSet); // set on compare match & interrupt
 	list[channel] = this;
 	channelmask |= (1<<channel);
 	*portConfigRegister(txPin) = PORT_PCR_MUX(4) | PORT_PCR_DSE | PORT_PCR_SRE;
@@ -192,11 +215,13 @@ bool PulsePositionOutput::write(uint8_t channel, float microseconds)
 
 void PulsePositionOutput::isr(void)
 {
+	#if defined(KINETISK)
 	FTM0_MODE = 0;
+	#endif
 	if (state == 0) {
 		// pin was just set high, schedule it to go low
 		ftm->cv += TX_PULSE_WIDTH_CLOCKS;
-		ftm->csc = cscClear; // clear on compare match & interrupt
+		CSC_CHANGE_INTACK(ftm, cscClear); // clear on compare match & interrupt
 		state = 1;
 	} else {
 		// pin just went low
@@ -216,9 +241,9 @@ void PulsePositionOutput::isr(void)
 			if (framePinReg) {
 				//if (channel == 0) {
 				if (channel == 1) {
-					*framePinReg = 1;
+					FRAME_PIN_SET();
 				} else {
-					*framePinReg = 0;
+					FRAME_PIN_CLEAR();
 				}
 			}
 			current_channel = channel;
@@ -227,11 +252,11 @@ void PulsePositionOutput::isr(void)
 		}
 		if (width <= 60000) {
 			ftm->cv += width;
-			ftm->csc = cscSet; // set on compare match & interrupt
+			CSC_CHANGE_INTACK(ftm, cscSet); // set on compare match & interrupt
 			state = 0;
 		} else {
 			ftm->cv += 58000;
-			ftm->csc = cscClear; // clear on compare match & interrupt
+			CSC_INTACK(ftm, cscClear); // clear on compare match & interrupt
 			pulse_remaining = width - 58000;
 			state = 2;
 		}
@@ -241,10 +266,15 @@ void PulsePositionOutput::isr(void)
 void ftm0_isr(void)
 {
 	if (FTM0_SC & 0x80) {
+		#if defined(KINETISK)
 		FTM0_SC = FTM0_SC_VALUE;
+		#elif defined(KINETISL)
+		FTM0_SC = FTM0_SC_VALUE | FTM_SC_TOF;
+		#endif
 		PulsePositionInput::overflow_count++;
 		PulsePositionInput::overflow_inc = true;
 	}
+	// TODO: this could be efficient by reading FTM0_STATUS
 	uint8_t maskin = PulsePositionInput::channelmask;
 	if ((maskin & 0x01) && (FTM0_C0SC & 0x80)) PulsePositionInput::list[0]->isr();
 	if ((maskin & 0x02) && (FTM0_C1SC & 0x80)) PulsePositionInput::list[1]->isr();
@@ -252,8 +282,10 @@ void ftm0_isr(void)
 	if ((maskin & 0x08) && (FTM0_C3SC & 0x80)) PulsePositionInput::list[3]->isr();
 	if ((maskin & 0x10) && (FTM0_C4SC & 0x80)) PulsePositionInput::list[4]->isr();
 	if ((maskin & 0x20) && (FTM0_C5SC & 0x80)) PulsePositionInput::list[5]->isr();
+	#if defined(KINETISK)
 	if ((maskin & 0x40) && (FTM0_C6SC & 0x80)) PulsePositionInput::list[6]->isr();
 	if ((maskin & 0x80) && (FTM0_C7SC & 0x80)) PulsePositionInput::list[7]->isr();
+	#endif
 	uint8_t maskout = PulsePositionOutput::channelmask;
 	if ((maskout & 0x01) && (FTM0_C0SC & 0x80)) PulsePositionOutput::list[0]->isr();
 	if ((maskout & 0x02) && (FTM0_C1SC & 0x80)) PulsePositionOutput::list[1]->isr();
@@ -261,8 +293,10 @@ void ftm0_isr(void)
 	if ((maskout & 0x08) && (FTM0_C3SC & 0x80)) PulsePositionOutput::list[3]->isr();
 	if ((maskout & 0x10) && (FTM0_C4SC & 0x80)) PulsePositionOutput::list[4]->isr();
 	if ((maskout & 0x20) && (FTM0_C5SC & 0x80)) PulsePositionOutput::list[5]->isr();
+	#if defined(KINETISK)
 	if ((maskout & 0x40) && (FTM0_C6SC & 0x80)) PulsePositionOutput::list[6]->isr();
 	if ((maskout & 0x80) && (FTM0_C7SC & 0x80)) PulsePositionOutput::list[7]->isr();
+	#endif
 	PulsePositionInput::overflow_inc = false;
 }
 
@@ -295,17 +329,21 @@ bool PulsePositionInput::begin(uint8_t pin)
 		FTM0_CNT = 0;
 		FTM0_MOD = 0xFFFF;
 		FTM0_SC = FTM0_SC_VALUE;
+		#if defined(KINETISK)
 		FTM0_MODE = 0;
+		#endif
 	}
 	switch (pin) {
-	  case  5: channel = 7; reg = &FTM0_C7SC; break;
 	  case  6: channel = 4; reg = &FTM0_C4SC; break;
 	  case  9: channel = 2; reg = &FTM0_C2SC; break;
 	  case 10: channel = 3; reg = &FTM0_C3SC; break;
 	  case 20: channel = 5; reg = &FTM0_C5SC; break;
-	  case 21: channel = 6; reg = &FTM0_C6SC; break;
 	  case 22: channel = 0; reg = &FTM0_C0SC; break;
 	  case 23: channel = 1; reg = &FTM0_C1SC; break;
+	  #if defined(KINETISK)
+	  case 21: channel = 6; reg = &FTM0_C6SC; break;
+	  case  5: channel = 7; reg = &FTM0_C7SC; break;
+	  #endif
 	  default:
 		return false;
 	}
@@ -313,10 +351,10 @@ bool PulsePositionInput::begin(uint8_t pin)
 	write_index = 255;
 	available_flag = false;
 	ftm = (struct ftm_channel_struct *)reg;
-	ftm->csc = cscEdge; // input capture & interrupt on rising edge
 	list[channel] = this;
 	channelmask |= (1<<channel);
-	*portConfigRegister(pin) = PORT_PCR_MUX(4) | PORT_PCR_DSE | PORT_PCR_SRE;
+	*portConfigRegister(pin) = PORT_PCR_MUX(4);
+	CSC_CHANGE(ftm, cscEdge); // input capture & interrupt on rising edge
 	NVIC_SET_PRIORITY(IRQ_FTM0, 32);
 	NVIC_ENABLE_IRQ(IRQ_FTM0);
 	return true;
@@ -327,7 +365,7 @@ void PulsePositionInput::isr(void)
 	uint32_t val, count;
 
 	val = ftm->cv;
-	ftm->csc = cscEdge; // input capture & interrupt on rising edge
+	CSC_INTACK(ftm, cscEdge); // input capture & interrupt on rising edge
 	count = overflow_count;
 	if (val > 0xE000 && overflow_inc) count--;
 	val |= (count << 16);

@@ -50,6 +50,7 @@ private:
 	uint32_t pulse_buffer[PULSEPOSITION_MAXCHANNELS+1];
 	uint32_t pulse_remaining;
 	volatile uint8_t *framePinReg;
+	volatile uint8_t framePinMask;
 	struct ftm_channel_struct *ftm;
 	uint8_t state;
 	uint8_t current_channel;

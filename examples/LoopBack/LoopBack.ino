@@ -6,12 +6,12 @@ PulsePositionOutput myOut;
 PulsePositionInput myIn;
 
 void setup() {
-  myOut.begin(5);  // connect pins 5 and 6 together...
-  myIn.begin(6);
+  myOut.begin(9);  // connect pins 9 and 10 together...
+  myIn.begin(10);
   myOut.write(1, 600.03);
   myOut.write(2, 1500);
   myOut.write(3, 759.24);
-  // slots 4 and 5 will default to 1ms
+  // slots 4 and 5 will default to 1500 us
   myOut.write(6, 1234.56);
 }
 
