@@ -2,11 +2,25 @@
   "name": "PulsePosition",
   "keywords": "pulse, signal",
   "description": "Multiple High-Res Input & Output PPM Encoded Signal Streams",
+  "authors":
+  [
+    {
+      "name": "Paul Stoffregen",
+      "email": "paul@pjrc.com",
+      "url": "http://www.pjrc.com",
+      "maintainer": true
+      }
+  ],
   "repository":
   {
     "type": "git",
     "url": "https://github.com/PaulStoffregen/PulsePosition.git"
   },
+  "version": "1.0",
+  "homepage": "http://www.pjrc.com/teensy/td_libs_PulsePosition.html",
   "frameworks": "arduino",
-  "platforms": "teensy"
+  "platforms": "teensy",
+  "examples": [
+    "examples/*/*.ino"
+  ]
 }
