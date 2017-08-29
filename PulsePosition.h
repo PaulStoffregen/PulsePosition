@@ -28,6 +28,10 @@
 
 #include <Arduino.h>
 
+#ifdef __AVR__
+#error "Sorry, PulsePosition does not work on Teensy 2.0 and other AVR-based boards"
+#endif
+
 #define PULSEPOSITION_MAXCHANNELS 16
 
 struct ftm_channel_struct {
