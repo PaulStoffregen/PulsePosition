@@ -26,6 +26,7 @@
  * THE SOFTWARE.
  */
 
+#if defined(__arm__) && defined(TEENSYDUINO) && (defined(__MKL26Z64__) || defined(__MK20DX128__) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__))
 
 
 #include "PulsePosition.h"
@@ -418,4 +419,4 @@ float PulsePositionInput::read(uint8_t channel)
 }
 
 
-
+#endif

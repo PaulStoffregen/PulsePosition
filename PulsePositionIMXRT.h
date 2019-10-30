@@ -26,50 +26,76 @@
  * THE SOFTWARE.
  */
 
-#include <Arduino.h>
+#ifndef __PULSE_POSITION_IMXRT_H__
+#define __PULSE_POSITION_IMXRT_H__
+ 
+#if defined(__IMXRT1062__)
 
-#ifdef __AVR__
-#error "Sorry, PulsePosition does not work on Teensy 2.0 and other AVR-based boards"
-#elif defined(__IMXRT1062__)
-#include "PulsePositionIMXRT.h"
-#else 
+#include <Arduino.h>
 
 #define PULSEPOSITION_MAXCHANNELS 16
 
-struct ftm_channel_struct {
-	uint32_t csc;
-	uint32_t cv;
+class PulsePositionBase
+{
+public:
+
+protected:
+	static PulsePositionBase *list[10];
+	virtual void isr() = 0;
+
+	typedef struct {
+		uint8_t 		pin;
+		uint8_t			channel;
+		volatile IMXRT_TMR_t* tmr;
+		volatile uint32_t *clock_gate_register;
+		uint32_t 		clock_gate_mask;
+		IRQ_NUMBER_t	interrupt;
+		void     		(*isr)();
+		volatile uint32_t	*select_input_register; // Which register controls the selection
+		const uint32_t		select_val;	// Value for that selection
+	} TMR_Hardware_t;
+
+	static const TMR_Hardware_t hardware[];
+	static const uint8_t _hardware_count;
+
+	// static class functions
+
+	static void isrTimer1();
+	static void isrTimer2();
+	static void isrTimer3();
+	static void isrTimer4();
+	static inline void checkAndProcessTimerCHInPending(uint8_t index, volatile IMXRT_TMR_CH_t *tmr_ch);
 };
 
-class PulsePositionOutput
+
+class PulsePositionOutput : public PulsePositionBase
 {
 public:
 	PulsePositionOutput(void);
 	PulsePositionOutput(int polarity);
 	bool begin(uint8_t txPin); // txPin can be 5,6,9,10,20,21,22,23
-	bool begin(uint8_t txPin, uint8_t framePin);
+	bool begin(uint8_t txPin, uint32_t _framePin);
 	bool write(uint8_t channel, float microseconds);
-	friend void ftm0_isr(void);
+
 private:
-	void isr(void);
-	uint32_t pulse_width[PULSEPOSITION_MAXCHANNELS+1];
-	uint32_t pulse_buffer[PULSEPOSITION_MAXCHANNELS+1];
-	uint32_t pulse_remaining;
-	volatile uint8_t *framePinReg;
+	uint8_t outPolarity = 1;  // Polarity rising
+	uint8_t inPolarity = 1;
+	
 	volatile uint8_t framePinMask;
-	struct ftm_channel_struct *ftm;
-	uint8_t state;
-	uint8_t current_channel;
-	uint8_t total_channels;
-	uint8_t total_channels_buffer;
-	uint8_t cscSet;
-	uint8_t cscClear;
-	static PulsePositionOutput *list[8];
-	static uint8_t channelmask;
+	uint32_t state, total_channels, total_channels_buffer, pulse_remaining,
+			 current_channel, framePin = 255;
+	volatile uint32_t ticks;
+	
+	uint32_t pulse_width[PULSEPOSITION_MAXCHANNELS + 1];
+	uint32_t pulse_buffer[PULSEPOSITION_MAXCHANNELS + 1];
+
+	// member variables...
+	uint16_t idx_channel;
+	virtual void isr();
 };
 
 
-class PulsePositionInput
+class PulsePositionInput : public PulsePositionBase
 {
 public:
 	PulsePositionInput(void);
@@ -77,21 +103,22 @@ public:
 	bool begin(uint8_t rxPin); // rxPin can be 5,6,9,10,20,21,22,23
 	int available(void);
 	float read(uint8_t channel);
-	friend void ftm0_isr(void);
+	
 private:
-	void isr(void);
-	struct ftm_channel_struct *ftm;
-	uint32_t pulse_width[PULSEPOSITION_MAXCHANNELS];
-	uint32_t pulse_buffer[PULSEPOSITION_MAXCHANNELS];
+	uint32_t pulse_width[PULSEPOSITION_MAXCHANNELS+1];
+	uint32_t pulse_buffer[PULSEPOSITION_MAXCHANNELS+1];
 	uint32_t prev;
 	uint8_t write_index;
 	uint8_t total_channels;
-	uint8_t cscEdge;
-	bool available_flag;
-	static bool overflow_inc;
-	static uint16_t overflow_count;
-	static PulsePositionInput *list[8];
+	uint8_t outPolarity = 1;  // Polarity rising
+	uint8_t inPolarity = 1;
+	volatile uint32_t ticks, overflow_count;
+	volatile bool overflow_inc, available_flag;
 	static uint8_t channelmask;
+	// member variables...
+	uint16_t idx_channel;
+	virtual void isr();
 };
 
+#endif
 #endif
