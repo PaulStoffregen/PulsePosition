@@ -73,7 +73,7 @@ class PulsePositionOutput : public PulsePositionBase
 public:
 	PulsePositionOutput(void);
 	PulsePositionOutput(int polarity);
-	bool begin(uint8_t txPin); // txPin can be 5,6,9,10,20,21,22,23
+	bool begin(uint8_t txPin); // txPin can be 6,9,10,11,12,13,14,15,18,19
 	bool begin(uint8_t txPin, uint32_t _framePin);
 	bool write(uint8_t channel, float microseconds);
 
@@ -100,7 +100,7 @@ class PulsePositionInput : public PulsePositionBase
 public:
 	PulsePositionInput(void);
 	PulsePositionInput(int polarity);
-	bool begin(uint8_t rxPin); // rxPin can be 5,6,9,10,20,21,22,23
+	bool begin(uint8_t rxPin); // rxPin can be 6,9,10,11,12,13,14,15,18,19
 	int available(void);
 	float read(uint8_t channel);
 	
