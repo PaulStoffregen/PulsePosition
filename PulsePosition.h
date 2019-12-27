@@ -1,7 +1,8 @@
-/* PulsePosition Library for Teensy 3.1
+/* PulsePosition Library for Teensy 3.x, LC, and 4.0
+
  * High resolution input and output of PPM encoded signals
  * http://www.pjrc.com/teensy/td_libs_PulsePosition.html
- * Copyright (c) 2014, Paul Stoffregen, paul@pjrc.com
+ * Copyright (c) 2019, Paul Stoffregen, paul@pjrc.com
  *
  * Development of this library was funded by PJRC.COM, LLC by sales of Teensy
  * boards.  Please support PJRC's efforts to develop open source software by
@@ -30,7 +31,9 @@
 
 #ifdef __AVR__
 #error "Sorry, PulsePosition does not work on Teensy 2.0 and other AVR-based boards"
-#endif
+#elif defined(__IMXRT1062__)
+#include "PulsePositionIMXRT.h"
+#else 
 
 #define PULSEPOSITION_MAXCHANNELS 16
 
@@ -92,4 +95,4 @@ private:
 	static uint8_t channelmask;
 };
 
-
+#endif
