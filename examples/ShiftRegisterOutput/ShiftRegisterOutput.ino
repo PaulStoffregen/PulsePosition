@@ -1,8 +1,5 @@
-#if defined(__IMXRT1062__)
-  #include <PulsePositionIMXRT.h>       //Teensy 4.x and Micromod, __IMXRT1062__, ARDUINO_TEENSY40, ARDUINO_TEENSY41, ARDUINO_MICROMOD
-#else
-  #include <PulsePosition.h>            //Teensy 3.x and Teensy LC
-#endif
+#include <PulsePosition.h>
+
 // Two wire output is intended to connect to a 74HCT164 shift register chip
 //
 // 74HCT164 pinout:
