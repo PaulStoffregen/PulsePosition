@@ -1,4 +1,8 @@
-#include <PulsePosition.h>
+#if defined(__IMXRT1062__)
+  #include <PulsePositionIMXRT.h>       //Teensy 4.x and Micromod, __IMXRT1062__, ARDUINO_TEENSY40, ARDUINO_TEENSY41, ARDUINO_MICROMOD
+#else
+  #include <PulsePosition.h>            //Teensy 3.x and Teensy LC
+#endif
 
 // Simple loopback test: create 1 output to transmit
 // test pulses, and 1 input to receive the pulses
